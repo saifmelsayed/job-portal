@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
+use Illuminate\Support\Arr;
 
 class UserRepository
 {
@@ -16,7 +17,7 @@ class UserRepository
      */
     public function create(array $data): User
     {
-        return User::query()->create($data);
+        return User::query()->create(Arr::except($data, ['skills']));
     }
 
     /**
@@ -24,6 +25,6 @@ class UserRepository
      */
     public function update(User $user, array $data): void
     {
-        $user->update($data);
+        $user->update(Arr::except($data, ['skills']));
     }
 }

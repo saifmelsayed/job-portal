@@ -23,6 +23,26 @@ class UserFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            if (! $user->isJobSeeker()) {
+                return;
+            }
+
+            if ($user->skills()->exists()) {
+                return;
+            }
+
+            foreach (['Laravel', 'PHP', 'MySQL'] as $index => $skill) {
+                $user->skills()->create([
+                    'name' => $skill,
+                    'sort_order' => $index,
+                ]);
+            }
+        });
+    }
+
     public function definition(): array
     {
         $firstName = fake()->firstName();
@@ -32,7 +52,6 @@ class UserFactory extends Factory
             'first_name' => $firstName,
             'last_name' => $lastName,
             'full_name' => $firstName.' '.$lastName,
-            'skills' => ['Laravel', 'PHP', 'MySQL'],
             'cv_path' => null,
             'company_name' => null,
             'industry' => null,
@@ -72,7 +91,6 @@ class UserFactory extends Factory
                 'first_name' => $first,
                 'last_name' => $last,
                 'full_name' => $first.' '.$last,
-                'skills' => ['Laravel', 'PHP', 'MySQL'],
                 'company_name' => null,
                 'industry' => null,
                 'company_size' => null,
@@ -87,7 +105,6 @@ class UserFactory extends Factory
             'first_name' => null,
             'last_name' => null,
             'full_name' => null,
-            'skills' => null,
             'cv_path' => null,
             'company_name' => fake()->company(),
             'industry' => 'Technology',

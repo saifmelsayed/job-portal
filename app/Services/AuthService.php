@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Repositories\UserRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AuthService
@@ -17,7 +18,7 @@ class AuthService
 
     /**
      * @param  array<string, mixed>  $data  Result of RegisterRequest validation.
-     * @return array{user: User, token: string}
+     * @return array{user: User}
      */
     public function register(array $data): array
     {
@@ -35,7 +36,6 @@ class AuthService
             $userData['first_name'] = $first;
             $userData['last_name'] = $last;
             $userData['full_name'] = $data['full_name'];
-            $userData['skills'] = $this->normalizeSkills($data['skills']);
             $userData['cv_path'] = $data['cv_path'] ?? null;
             $userData['company_name'] = null;
             $userData['industry'] = null;
@@ -44,20 +44,43 @@ class AuthService
             $userData['first_name'] = null;
             $userData['last_name'] = null;
             $userData['full_name'] = null;
-            $userData['skills'] = null;
             $userData['cv_path'] = null;
             $userData['company_name'] = $data['company_name'];
             $userData['industry'] = $data['industry'];
             $userData['company_size'] = $data['company_size'];
         }
 
-        $user = $this->users->create($userData);
-        $token = $user->createToken(self::TOKEN_NAME)->plainTextToken;
+        $userData['email_verified_at'] = now();
 
-        return [
-            'user' => $user,
-            'token' => $token,
-        ];
+        return DB::transaction(function () use ($role, $data, $userData): array {
+            $user = $this->users->create($userData);
+
+            if ($role === UserRole::JobSeeker) {
+                $seen = [];
+                $order = 0;
+                foreach ($this->normalizeSkills($data['skills']) as $name) {
+                    $trimmed = mb_substr(trim($name), 0, 100);
+                    if ($trimmed === '') {
+                        continue;
+                    }
+                    $key = mb_strtolower($trimmed);
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                    $user->skills()->create([
+                        'name' => $trimmed,
+                        'sort_order' => $order,
+                    ]);
+                    $order++;
+                }
+                $user->unsetRelation('skills');
+            }
+
+            return [
+                'user' => $user,
+            ];
+        });
     }
 
     /**
@@ -90,20 +113,22 @@ class AuthService
     }
 
     /**
-     * @return array{user: User, token: string}|null
+     * @return array{user: User, token: string}|array{disabled: true}|null
      */
-    public function attemptLogin(string $email, string $password): ?array
+    public function attemptLogin(string $email, string $password): array|null
     {
         $user = $this->users->findByEmail($email);
         if (! $user || ! Hash::check($password, $user->getAuthPassword())) {
             return null;
         }
 
-        $token = $user->createToken(self::TOKEN_NAME)->plainTextToken;
+        if ($user->status !== 'active') {
+            return ['disabled' => true];
+        }
 
         return [
             'user' => $user,
-            'token' => $token,
+            'token' => $user->createToken(self::TOKEN_NAME)->plainTextToken,
         ];
     }
 

@@ -28,7 +28,13 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'confirmed', Password::min(8)],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role' => [
+                'required',
+                Rule::in([
+                    UserRole::JobSeeker->value,
+                    UserRole::Company->value,
+                ]),
+            ],
 
             'full_name' => [
                 "prohibited_if:role,{$company}",
