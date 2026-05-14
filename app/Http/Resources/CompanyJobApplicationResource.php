@@ -20,15 +20,20 @@ class CompanyJobApplicationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'job_posting_id' => $this->job_posting_id,
             'status' => $this->status->value,
             'submitted_at' => $this->formatDateTime($this->created_at),
+            'user_id' => $this->user_id,
             'job_title' => $this->job_title,
             'name' => $this->applicant_name,
             'email' => $this->applicant_email,
             'phone' => $this->applicant_phone,
             'linkedin' => $this->applicant_linkedin,
-            //'cv' => basename($this->cv_path),
             'cv_url' => $this->resource->cvPublicUrl(),
+            'seeker_profile' => $this->when(
+                $this->relationLoaded('applicant') && $this->applicant !== null,
+                fn (): array => (new UserResource($this->applicant))->resolve($request)
+            ),
         ];
     }
 
@@ -41,6 +46,6 @@ class CompanyJobApplicationResource extends JsonResource
         return $value
             ->copy()
             ->timezone((string) config('app.timezone', 'Africa/Cairo'))
-            ->format('M j, Y \a\t g:i A T');
+            ->format('M j, Y \a\t g:i A');
     }
 }

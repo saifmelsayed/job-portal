@@ -2,34 +2,30 @@
 
 namespace App\Models;
 
+use App\Enums\SubscriptionStatus;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'first_name',
     'last_name',
-    'full_name',
-    'cv_path',
-    'company_name',
-    'industry',
-    'company_size',
     'email',
     'phone',
     'password',
     'role',
     'status',
-    'gender',
     'city',
     'street',
     'profile_photo_path',
-    'is_super_admin',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -46,7 +42,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
-            'is_super_admin' => 'boolean',
         ];
     }
 
@@ -67,7 +62,31 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->isAdmin() && $this->is_super_admin;
+        return $this->isAdmin() && (bool) ($this->admin?->is_super_admin);
+    }
+
+    /**
+     * @return HasOne<Admin, $this>
+     */
+    public function admin(): HasOne
+    {
+        return $this->hasOne(Admin::class);
+    }
+
+    /**
+     * @return HasOne<JobSeekerProfile, $this>
+     */
+    public function jobSeekerProfile(): HasOne
+    {
+        return $this->hasOne(JobSeekerProfile::class);
+    }
+
+    /**
+     * @return HasOne<CompanyProfile, $this>
+     */
+    public function companyProfile(): HasOne
+    {
+        return $this->hasOne(CompanyProfile::class);
     }
 
     /**
@@ -84,6 +103,19 @@ class User extends Authenticatable
     public function jobApplications(): HasMany
     {
         return $this->hasMany(JobApplication::class);
+    }
+
+    /**
+     * Public URL for profile photo on the public disk (if stored under storage/app/public).
+     */
+    public function profilePhotoPublicUrl(): ?string
+    {
+        $path = $this->profile_photo_path;
+        if ($path === null || $path === '' || str_contains($path, '..')) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     /**
@@ -116,5 +148,28 @@ class User extends Authenticatable
     public function certificates(): HasMany
     {
         return $this->hasMany(UserCertificate::class)->orderByDesc('issued_at')->orderByDesc('id');
+    }
+
+    /**
+     * @return HasMany<Subscription, $this>
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * The seeker's primary subscription row used for entitlement (excluding cancelled records).
+     *
+     * @return HasOne<Subscription, $this>
+     */
+    public function activeSeekerSubscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)
+            ->whereIn('status', [
+                SubscriptionStatus::Active->value,
+                SubscriptionStatus::Suspended->value,
+            ])
+            ->latestOfMany('id');
     }
 }

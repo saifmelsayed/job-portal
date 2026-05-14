@@ -16,12 +16,43 @@ use Illuminate\Http\Request;
 
 class CompanyJobPostingController extends Controller
 {
+    private const int APPLICATIONS_PER_PAGE = 15;
+
+    /** All applicants across every job belonging to this company. */
+    public function allApplications(Request $request): JsonResponse
+    {
+        $perPage = min(max((int) $request->integer('per_page', self::APPLICATIONS_PER_PAGE), 1), 100);
+
+        $companyOwnerId = $request->user()->id;
+
+        $applications = JobApplication::query()
+            ->whereHas('jobPosting', static function ($query) use ($companyOwnerId): void {
+                $query->where('user_id', $companyOwnerId);
+            })
+            ->with(array_merge([
+                'jobPosting' => static function ($q): void {
+                    $q->select('id', 'user_id', 'title');
+                },
+            ], JobApplication::applicantProfileWith()))
+            ->latest()
+            ->paginate($perPage);
+
+        $data = $applications->through(
+            fn (JobApplication $application): array => (new CompanyJobApplicationResource($application))->resolve($request),
+        );
+
+        return ApiResponse::data($data);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $postings = $request->user()
             ->jobPostings()
             ->with([
-                'user:id,company_name',
+                'user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'user.companyProfile',
             ])
             ->latest()
             ->get();
@@ -39,7 +70,10 @@ class CompanyJobPostingController extends Controller
         $posting = $request->user()->jobPostings()->create($request->validated());
 
         $posting->load([
-            'user:id,company_name',
+            'user' => static function ($q): void {
+                $q->select('id', 'email', 'profile_photo_path');
+            },
+            'user.companyProfile',
         ]);
 
         return ApiResponse::data(
@@ -53,7 +87,10 @@ class CompanyJobPostingController extends Controller
         $this->ensureOwnedByUser($request, $jobPosting);
 
         $jobPosting->loadMissing([
-            'user:id,company_name',
+            'user' => static function ($q): void {
+                $q->select('id', 'email', 'profile_photo_path');
+            },
+            'user.companyProfile',
         ]);
 
         return ApiResponse::data(
@@ -66,11 +103,12 @@ class CompanyJobPostingController extends Controller
         $this->ensureOwnedByUser($request, $jobPosting);
 
         $applications = $jobPosting->applications()
+            ->with(JobApplication::applicantProfileWith())
             ->latest()
             ->get();
 
         $data = $applications
-            ->map(fn (JobApplication $application) => (new CompanyJobApplicationResource($application))->toArray($request))
+            ->map(fn (JobApplication $application) => (new CompanyJobApplicationResource($application))->resolve($request))
             ->values()
             ->all();
 
@@ -88,7 +126,9 @@ class CompanyJobPostingController extends Controller
         $jobApplication->update($request->validated());
 
         return ApiResponse::data(
-            (new CompanyJobApplicationResource($jobApplication->fresh()))->toArray($request),
+            (new CompanyJobApplicationResource(
+                $jobApplication->fresh(JobApplication::applicantProfileWith())
+            ))->resolve($request),
         );
     }
 
@@ -99,7 +139,10 @@ class CompanyJobPostingController extends Controller
         $jobPosting->update($request->validated());
 
         $jobPosting = $jobPosting->fresh()->load([
-            'user:id,company_name',
+            'user' => static function ($q): void {
+                $q->select('id', 'email', 'profile_photo_path');
+            },
+            'user.companyProfile',
         ]);
 
         return ApiResponse::data(

@@ -21,6 +21,7 @@ class AdminSubAdminController extends Controller
     {
         $paginator = User::query()
             ->where('role', UserRole::Admin)
+            ->with('admin')
             ->orderBy('id')
             ->paginate(perPage: min((int) $request->integer('per_page', 15), 100));
 
@@ -50,21 +51,19 @@ class AdminSubAdminController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => UserRole::Admin,
-            'is_super_admin' => false,
             'first_name' => $validated['first_name'] ?? 'Staff',
             'last_name' => $validated['last_name'] ?? 'Admin',
-            'full_name' => null,
             'phone' => null,
-            'cv_path' => null,
-            'company_name' => null,
-            'industry' => null,
-            'company_size' => null,
             'email_verified_at' => now(),
             'status' => 'active',
         ]);
 
+        $admin->admin()->create([
+            'is_super_admin' => false,
+        ]);
+
         return ApiResponse::data(
-            (new AdminAccountResource($admin))->toArray($request),
+            (new AdminAccountResource($admin->loadMissing('admin')))->toArray($request),
             201,
         );
     }
@@ -79,7 +78,7 @@ class AdminSubAdminController extends Controller
         }
 
         return ApiResponse::data(
-            (new AdminAccountResource($user))->toArray($request),
+            (new AdminAccountResource($user->loadMissing('admin')))->toArray($request),
         );
     }
 
@@ -116,14 +115,14 @@ class AdminSubAdminController extends Controller
         }
 
         return ApiResponse::data(
-            (new AdminAccountResource($user->fresh()))->toArray($request),
+            (new AdminAccountResource($user->fresh()->loadMissing('admin')))->toArray($request),
         );
     }
 
     /**
-     * Soft “delete”: set inactive and revoke all tokens (same safety as update).
+     * Deactivate an admin: set status inactive and revoke all tokens.
      */
-    public function destroy(Request $request, User $user): JsonResponse
+    public function deactivate(Request $request, User $user): JsonResponse
     {
         if (! $user->isAdmin()) {
             return ApiResponse::message('Not found.', 404);
@@ -133,11 +132,38 @@ class AdminSubAdminController extends Controller
             return ApiResponse::message('You cannot deactivate the only active super admin.', 422);
         }
 
+        if ($user->status === 'inactive') {
+            return ApiResponse::message('Admin is already inactive.', 422);
+        }
+
         $user->status = 'inactive';
         $user->save();
         $user->tokens()->delete();
 
-        return ApiResponse::message('Admin deactivated and logged out everywhere.');
+        return ApiResponse::data(
+            (new AdminAccountResource($user->fresh()->loadMissing('admin')))->toArray($request),
+        );
+    }
+
+    /**
+     * Reactivate an admin (does not restore old tokens; user must log in again).
+     */
+    public function activate(Request $request, User $user): JsonResponse
+    {
+        if (! $user->isAdmin()) {
+            return ApiResponse::message('Not found.', 404);
+        }
+
+        if ($user->status === 'active') {
+            return ApiResponse::message('Admin is already active.', 422);
+        }
+
+        $user->status = 'active';
+        $user->save();
+
+        return ApiResponse::data(
+            (new AdminAccountResource($user->fresh()->loadMissing('admin')))->toArray($request),
+        );
     }
 
     /**
@@ -151,8 +177,10 @@ class AdminSubAdminController extends Controller
 
         $activeSupers = User::query()
             ->where('role', UserRole::Admin)
-            ->where('is_super_admin', true)
             ->where('status', 'active')
+            ->whereHas('admin', static function ($q): void {
+                $q->where('is_super_admin', true);
+            })
             ->count();
 
         return $activeSupers === 1;

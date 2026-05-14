@@ -21,6 +21,7 @@ return [
 
     'allowed_origins' => [
         'https://jobs-ten-sigma.vercel.app',
+        'https://jobs-dashboard-ten.vercel.app',
         'http://localhost:5173',
     ],
 
@@ -32,6 +33,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

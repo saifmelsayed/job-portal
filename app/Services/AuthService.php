@@ -29,33 +29,24 @@ class AuthService
             'password' => $data['password'],
             'phone' => $data['phone'] ?? null,
             'role' => $role,
+            'status' => 'active',
+            'email_verified_at' => now(),
         ];
-
-        if ($role === UserRole::JobSeeker) {
-            [$first, $last] = $this->splitFullName($data['full_name']);
-            $userData['first_name'] = $first;
-            $userData['last_name'] = $last;
-            $userData['full_name'] = $data['full_name'];
-            $userData['cv_path'] = $data['cv_path'] ?? null;
-            $userData['company_name'] = null;
-            $userData['industry'] = null;
-            $userData['company_size'] = null;
-        } else {
-            $userData['first_name'] = null;
-            $userData['last_name'] = null;
-            $userData['full_name'] = null;
-            $userData['cv_path'] = null;
-            $userData['company_name'] = $data['company_name'];
-            $userData['industry'] = $data['industry'];
-            $userData['company_size'] = $data['company_size'];
-        }
-
-        $userData['email_verified_at'] = now();
 
         return DB::transaction(function () use ($role, $data, $userData): array {
             $user = $this->users->create($userData);
 
             if ($role === UserRole::JobSeeker) {
+                [$first, $last] = $this->splitFullName($data['full_name']);
+                $user->jobSeekerProfile()->create([
+                    'first_name' => $first,
+                    'last_name' => $last,
+                    'full_name' => $data['full_name'],
+                    'cv_path' => $data['cv_path'] ?? null,
+                    'gender' => null,
+                    'disability_type' => null,
+                ]);
+
                 $seen = [];
                 $order = 0;
                 foreach ($this->normalizeSkills($data['skills']) as $name) {
@@ -75,6 +66,15 @@ class AuthService
                     $order++;
                 }
                 $user->unsetRelation('skills');
+            }
+
+            if ($role === UserRole::Company) {
+                $user->companyProfile()->create([
+                    'company_name' => $data['company_name'],
+                    'industry' => $data['industry'],
+                    'company_size' => $data['company_size'],
+                    'disability_support_policy' => null,
+                ]);
             }
 
             return [
@@ -124,6 +124,36 @@ class AuthService
 
         if ($user->status !== 'active') {
             return ['disabled' => true];
+        }
+
+        if ($user->isAdmin()) {
+            return null;
+        }
+
+        return [
+            'user' => $user,
+            'token' => $user->createToken(self::TOKEN_NAME)->plainTextToken,
+        ];
+    }
+
+    /**
+     * Login for administrator accounts only (separate from job seeker / company login).
+     *
+     * @return array{user: User, token: string}|array{disabled: true}|null
+     */
+    public function attemptAdminLogin(string $email, string $password): array|null
+    {
+        $user = $this->users->findByEmail($email);
+        if (! $user || ! Hash::check($password, $user->getAuthPassword())) {
+            return null;
+        }
+
+        if ($user->status !== 'active') {
+            return ['disabled' => true];
+        }
+
+        if (! $user->isAdmin()) {
+            return null;
         }
 
         return [

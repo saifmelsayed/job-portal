@@ -41,6 +41,15 @@ class UpdateProfileRequest extends FormRequest
         $this->merge([
             'phone' => ($phone === '' || $phone === null) ? null : $phone,
         ]);
+
+        foreach (['first_name', 'last_name', 'full_name'] as $field) {
+            $value = $this->input($field);
+            if (! is_string($value)) {
+                continue;
+            }
+            $trimmed = trim($value);
+            $this->merge([$field => $trimmed === '' ? null : $trimmed]);
+        }
     }
 
     /**
@@ -51,7 +60,9 @@ class UpdateProfileRequest extends FormRequest
         $userId = $this->user()->id;
 
         return [
-            'full_name' => ['sometimes', 'string', 'max:255'],
+            'first_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'last_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'full_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => [
                 'sometimes',
                 'nullable',
@@ -60,6 +71,7 @@ class UpdateProfileRequest extends FormRequest
                 Rule::unique('users', 'phone')->ignore($userId),
             ],
             'gender' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'disability_type' => ['sometimes', 'nullable', 'string', 'max:100'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
             'street' => ['sometimes', 'nullable', 'string', 'max:255'],
 

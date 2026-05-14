@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
     'job_qualification',
     'job_location',
     'job_type',
+    'job_approved_disability',
     'applicant_name',
     'applicant_email',
     'applicant_phone',
@@ -33,6 +34,7 @@ class JobApplication extends Model
     {
         return [
             'status' => ApplicationStatus::class,
+            'job_approved_disability' => 'array',
         ];
     }
 
@@ -50,6 +52,22 @@ class JobApplication extends Model
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Eager-load keys for the job seeker’s profile on {@see applicant()}.
+     *
+     * @return list<string>
+     */
+    public static function applicantProfileWith(): array
+    {
+        return [
+            'applicant.jobSeekerProfile',
+            'applicant.skills',
+            'applicant.educations',
+            'applicant.experiences',
+            'applicant.certificates',
+        ];
     }
 
     /**

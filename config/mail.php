@@ -39,10 +39,13 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
+            // Transport URI scheme (`smtp`, `smtps`) — not the same as encryption. Leave null unless using MAIL_URL.
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
+            // Gmail on 587 uses STARTTLS: set MAIL_ENCRYPTION=tls in `.env`; do not set MAIL_SCHEME=tls.
+            'encryption' => env('MAIL_ENCRYPTION'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobApplicationRequest;
+use App\Models\JobSeekerProfile;
 use App\Http\Resources\JobApplicationResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\JobApplication;
@@ -25,9 +26,12 @@ class JobSeekerJobApplicationController extends Controller
     {
         $applications = $request->user()
             ->jobApplications()
-            ->with([
-                'jobPosting.user:id,company_name',
-            ])
+            ->with(array_merge([
+                'jobPosting.user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'jobPosting.user.companyProfile',
+            ], JobApplication::applicantProfileWith()))
             ->latest()
             ->paginate(self::PER_PAGE);
 
@@ -46,20 +50,68 @@ class JobSeekerJobApplicationController extends Controller
             return ApiResponse::message('Job posting not found.', 404);
         }
 
-        $validated = $request->safe()->only(['name', 'email', 'phone', 'linkedin']);
+        $user = $request->user();
+        $disk = Storage::disk(self::APPLICATION_CV_DISK);
 
-        $path = null;
+        if ($request->applyFromProfile()) {
+            $user->loadMissing('jobSeekerProfile');
+            /** @var JobSeekerProfile|null $profile */
+            $profile = $user->jobSeekerProfile;
+            $sourceCv = $profile?->cv_path;
+            $baseDir = "cvs/jobs/{$jobPosting->id}/users/{$user->id}";
+            $ext = is_string($sourceCv) ? pathinfo($sourceCv, PATHINFO_EXTENSION) : '';
+            $ext = is_string($ext) && $ext !== '' ? '.'.$ext : '';
+            $destRelative = $baseDir.'/profile-'.uniqid('', true).$ext;
+            $path = null;
+
+            try {
+                if (! is_string($sourceCv) || $sourceCv === '' || ! $disk->exists($sourceCv)) {
+                    return ApiResponse::message('Profile CV missing or inaccessible.', 422);
+                }
+                $disk->makeDirectory(dirname($destRelative));
+
+                if (! $disk->copy($sourceCv, $destRelative)) {
+                    throw new \RuntimeException('Unable to snapshot profile CV.');
+                }
+
+                $path = $destRelative;
+                $extras = $request->safe()->only(['linkedin']);
+                $linkedin = $extras['linkedin'] ?? null;
+                $validated = [
+                    'name' => StoreJobApplicationRequest::applicantDisplayNameFromUser($user, $profile),
+                    'email' => strtolower((string) $user->email),
+                    'phone' => trim((string) ($user->phone ?? '')),
+                    'linkedin' => $linkedin,
+                ];
+            } catch (Throwable $e) {
+                if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                    $disk->delete($path);
+                }
+
+                throw $e;
+            }
+        } else {
+            $validated = $request->safe()->only(['name', 'email', 'phone', 'linkedin']);
+            $path = null;
+            try {
+                $path = $request->file('cv')->store(
+                    "cvs/jobs/{$jobPosting->id}/users/{$user->id}",
+                    self::APPLICATION_CV_DISK,
+                );
+            } catch (Throwable $e) {
+                if (is_string($path) && $path !== '') {
+                    Storage::disk(self::APPLICATION_CV_DISK)->delete($path);
+                }
+
+                throw $e;
+            }
+        }
 
         try {
-            $path = $request->file('cv')->store(
-                "cvs/jobs/{$jobPosting->id}/users/".$request->user()->id,
-                self::APPLICATION_CV_DISK,
-            );
-
-            $application = DB::transaction(function () use ($request, $jobPosting, $validated, $path) {
+            $application = DB::transaction(function () use ($jobPosting, $validated, $path, $user) {
                 return JobApplication::query()->create([
                     'job_posting_id' => $jobPosting->id,
-                    'user_id' => $request->user()->id,
+                    'user_id' => $user->id,
                     'status' => ApplicationStatus::Pending,
                     'job_title' => $jobPosting->title,
                     'job_description' => $jobPosting->description,
@@ -67,6 +119,7 @@ class JobSeekerJobApplicationController extends Controller
                     'job_qualification' => $jobPosting->qualification,
                     'job_location' => $jobPosting->location,
                     'job_type' => $jobPosting->type->value,
+                    'job_approved_disability' => array_values($jobPosting->approved_disability ?? []),
                     'applicant_name' => $validated['name'],
                     'applicant_email' => $validated['email'],
                     'applicant_phone' => $validated['phone'],
@@ -82,12 +135,15 @@ class JobSeekerJobApplicationController extends Controller
             throw $e;
         }
 
-        $application->load([
-            'jobPosting.user:id,company_name',
-        ]);
+        $application->load(array_merge([
+            'jobPosting.user' => static function ($q): void {
+                $q->select('id', 'email', 'profile_photo_path');
+            },
+            'jobPosting.user.companyProfile',
+        ], JobApplication::applicantProfileWith()));
 
         return ApiResponse::data(
-            (new JobApplicationResource($application))->toArray($request),
+            (new JobApplicationResource($application))->resolve($request),
             201,
         );
     }

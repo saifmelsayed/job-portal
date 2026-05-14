@@ -15,7 +15,9 @@ class AdminUserSeeder extends Seeder
     {
         $alreadyHasSuperAdmin = User::query()
             ->where('role', UserRole::Admin)
-            ->where('is_super_admin', true)
+            ->whereHas('admin', static function ($q): void {
+                $q->where('is_super_admin', true);
+            })
             ->exists();
 
         if ($alreadyHasSuperAdmin) {
@@ -29,21 +31,19 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
-        User::query()->create([
+        $user = User::query()->create([
             'email' => strtolower(trim($email)),
             'password' => $password,
             'role' => UserRole::Admin,
-            'is_super_admin' => true,
             'first_name' => 'Super',
             'last_name' => 'Admin',
-            'full_name' => null,
             'phone' => null,
-            'cv_path' => null,
-            'company_name' => null,
-            'industry' => null,
-            'company_size' => null,
             'email_verified_at' => now(),
             'status' => 'active',
+        ]);
+
+        $user->admin()->create([
+            'is_super_admin' => true,
         ]);
     }
 }

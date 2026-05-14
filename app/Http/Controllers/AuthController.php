@@ -22,9 +22,19 @@ class AuthController extends Controller
     {
         $result = $auth->register($request->validated());
 
+        $user = $result['user']->loadMissing([
+            'jobSeekerProfile',
+            'companyProfile',
+            'admin',
+            'skills',
+            'educations',
+            'experiences',
+            'certificates',
+        ]);
+
         return response()->json([
             'message' => 'Registration successful. You can log in now.',
-            'data' => (new UserResource($result['user']))->toArray($request),
+            'data' => (new UserResource($user))->resolve($request),
         ], 201);
     }
 
@@ -43,8 +53,41 @@ class AuthController extends Controller
             return ApiResponse::message('This account has been disabled.', 403);
         }
 
+        $result['user']->loadMissing([
+            'jobSeekerProfile',
+            'companyProfile',
+            'admin',
+            'skills',
+            'educations',
+            'experiences',
+            'certificates',
+        ]);
+
         return ApiResponse::dataWithToken(
-            (new UserResource($result['user']))->toArray($request),
+            (new UserResource($result['user']))->resolve($request),
+            $result['token'],
+        );
+    }
+
+    public function adminLogin(LoginRequest $request, AuthService $auth): JsonResponse
+    {
+        $result = $auth->attemptAdminLogin(
+            (string) $request->input('email'),
+            (string) $request->input('password')
+        );
+
+        if ($result === null) {
+            return ApiResponse::message(trans('auth.failed'), 401);
+        }
+
+        if (isset($result['disabled'])) {
+            return ApiResponse::message('This account has been disabled.', 403);
+        }
+
+        $result['user']->loadMissing(['admin']);
+
+        return ApiResponse::dataWithToken(
+            (new UserResource($result['user']))->resolve($request),
             $result['token'],
         );
     }

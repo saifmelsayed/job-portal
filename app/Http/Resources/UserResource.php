@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
@@ -17,23 +16,36 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'first_name' => $this->first_name,
-            'last_name' => $this->last_name,
+            'first_name' => $this->when(
+                $this->role === UserRole::JobSeeker || $this->role === UserRole::Admin,
+                $this->resolveFirstName(),
+            ),
+            'last_name' => $this->when(
+                $this->role === UserRole::JobSeeker || $this->role === UserRole::Admin,
+                $this->resolveLastName(),
+            ),
             'email' => $this->email,
             'phone' => $this->phone,
             'role' => $this->role?->value ?? $this->role,
             'status' => $this->status,
-            'gender' => $this->gender,
+            'is_super_admin' => $this->when(
+                $this->role === UserRole::Admin,
+                (bool) ($this->admin?->is_super_admin),
+            ),
+            'gender' => $this->when(
+                $this->role === UserRole::JobSeeker,
+                $this->jobSeekerProfile?->gender
+            ),
             'city' => $this->city,
             'street' => $this->street,
             'profile_photo_path' => $this->profile_photo_path,
-            'profile_photo_url' => $this->profilePhotoPublicUrl(),
+            'profile_photo_url' => $this->resource->profilePhotoPublicUrl(),
             'email_verified_at' => $this->formatDateTime($this->email_verified_at),
             'created_at' => $this->formatDateTime($this->created_at),
             'updated_at' => $this->formatDateTime($this->updated_at),
             'full_name' => $this->when(
                 $this->role === UserRole::JobSeeker,
-                $this->full_name
+                $this->jobSeekerProfile?->full_name
             ),
             'skills' => $this->when(
                 $this->role === UserRole::JobSeeker,
@@ -88,54 +100,79 @@ class UserResource extends JsonResource
                     ->values()
                     ->all()
             ),
-            // 'cv_path' => $this->when(
-            //     $this->role === UserRole::JobSeeker,
-            //     $this->cv_path
-            // ),
+            'cv_path' => $this->when(
+                $this->role === UserRole::JobSeeker,
+                $this->jobSeekerProfile?->cv_path
+            ),
             'cv_url' => $this->when(
-                $this->role === UserRole::JobSeeker && filled($this->cv_path),
-                fn (): ?string => $this->cvPublicUrl(),
+                $this->role === UserRole::JobSeeker && filled($this->jobSeekerProfile?->cv_path),
+                fn (): ?string => $this->jobSeekerProfile?->cvPublicUrl(),
+            ),
+            'disability_type' => $this->when(
+                $this->role === UserRole::JobSeeker,
+                $this->jobSeekerProfile?->disability_type
+            ),
+            'subscription' => $this->when(
+                $this->role === UserRole::JobSeeker && $this->relationLoaded('activeSeekerSubscription'),
+                fn (): ?array => $this->activeSeekerSubscription === null
+                    ? null
+                    : (new SubscriptionResource($this->activeSeekerSubscription))->resolve($request),
             ),
             'company_name' => $this->when(
                 $this->role === UserRole::Company,
-                $this->company_name
+                $this->companyProfile?->company_name
             ),
             'industry' => $this->when(
                 $this->role === UserRole::Company,
-                $this->industry
+                $this->companyProfile?->industry
             ),
             'company_size' => $this->when(
                 $this->role === UserRole::Company,
-                $this->company_size
+                $this->companyProfile?->company_size
+            ),
+            'disability_support_policy' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->disability_support_policy
+            ),
+            'overview' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->overview
+            ),
+            'facebook_url' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->facebook_url
+            ),
+            'x_url' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->x_url
+            ),
+            'linkedin_url' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->linkedin_url
+            ),
+            'instagram_url' => $this->when(
+                $this->role === UserRole::Company,
+                $this->companyProfile?->instagram_url
             ),
         ];
     }
 
-    private function profilePhotoPublicUrl(): ?string
+    private function resolveFirstName(): ?string
     {
-        $path = $this->profile_photo_path;
-        if ($path === null || $path === '') {
-            return null;
+        if ($this->role === UserRole::JobSeeker) {
+            return $this->jobSeekerProfile?->first_name;
         }
 
-        return Storage::disk('public')->url($path);
+        return $this->first_name;
     }
 
-    /**
-     * Same pattern as profile_photo_url: CV is stored on the public disk so the frontend can use this directly (e.g. iframe/embed).
-     */
-    private function cvPublicUrl(): ?string
+    private function resolveLastName(): ?string
     {
-        $path = $this->cv_path;
-        if ($path === null || $path === '' || str_contains($path, '..')) {
-            return null;
+        if ($this->role === UserRole::JobSeeker) {
+            return $this->jobSeekerProfile?->last_name;
         }
 
-        if (! Storage::disk('public')->exists($path)) {
-            return null;
-        }
-
-        return Storage::disk('public')->url($path);
+        return $this->last_name;
     }
 
     private function formatDateTime(?CarbonInterface $value): ?string
@@ -147,7 +184,7 @@ class UserResource extends JsonResource
         return $value
             ->copy()
             ->timezone((string) config('app.timezone', 'Africa/Cairo'))
-            ->format('M j, Y \a\t g:i A T');
+            ->format('M j, Y \a\t g:i A');
     }
 
     private function formatDate(?CarbonInterface $value): ?string

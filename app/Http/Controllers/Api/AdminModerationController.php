@@ -30,6 +30,7 @@ class AdminModerationController extends Controller
 
         $user = $user->fresh();
         $user->loadMissing([
+            'jobSeekerProfile',
             'skills',
             'educations',
             'experiences',
@@ -37,7 +38,7 @@ class AdminModerationController extends Controller
         ]);
 
         return ApiResponse::data(
-            (new UserResource($user))->toArray($request),
+            (new UserResource($user))->resolve($request),
         );
     }
 
@@ -54,8 +55,11 @@ class AdminModerationController extends Controller
 
         $company->update($request->validated());
 
+        $company = $company->fresh();
+        $company->loadMissing(['companyProfile']);
+
         return ApiResponse::data(
-            (new UserResource($company->fresh()))->toArray($request),
+            (new UserResource($company))->resolve($request),
         );
     }
 

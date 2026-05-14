@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateCompanyProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Responses\ApiResponse;
+use App\Models\CompanyProfile;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,14 +19,30 @@ class CompanyProfileController extends Controller
     private const string PHOTO_DISK = 'public';
 
     /** @var list<string> */
+    private const USER_FIELDS = ['phone', 'street', 'city'];
+
+    /** @var list<string> */
     private const PROFILE_FIELDS = [
         'company_name',
         'industry',
         'company_size',
-        'phone',
-        'street',
-        'city',
+        'disability_support_policy',
+        'overview',
+        'facebook_url',
+        'x_url',
+        'linkedin_url',
+        'instagram_url',
     ];
+
+    public function show(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->loadMissing(['companyProfile']);
+
+        return ApiResponse::data(
+            (new UserResource($user))->resolve($request),
+        );
+    }
 
     public function update(UpdateCompanyProfileRequest $request): JsonResponse
     {
@@ -41,9 +59,31 @@ class CompanyProfileController extends Controller
             DB::transaction(function () use ($request, $validated, &$storedNewPhotoPath): void {
                 $user = $request->user();
 
-                foreach (self::PROFILE_FIELDS as $field) {
+                /** @var CompanyProfile $profile */
+                $profile = $user->companyProfile()->firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'company_name' => null,
+                        'industry' => null,
+                        'company_size' => null,
+                        'disability_support_policy' => null,
+                        'overview' => null,
+                        'facebook_url' => null,
+                        'x_url' => null,
+                        'linkedin_url' => null,
+                        'instagram_url' => null,
+                    ],
+                );
+
+                foreach (self::USER_FIELDS as $field) {
                     if (Arr::has($validated, $field)) {
                         $user->{$field} = $validated[$field];
+                    }
+                }
+
+                foreach (self::PROFILE_FIELDS as $field) {
+                    if (Arr::has($validated, $field)) {
+                        $profile->{$field} = $validated[$field];
                     }
                 }
 
@@ -59,6 +99,7 @@ class CompanyProfileController extends Controller
                     $user->profile_photo_path = $storedNewPhotoPath;
                 }
 
+                $profile->save();
                 $user->save();
             });
         } catch (Throwable $e) {
@@ -79,8 +120,10 @@ class CompanyProfileController extends Controller
             Storage::disk(self::PHOTO_DISK)->delete($previousPhoto);
         }
 
+        $user->loadMissing(['companyProfile']);
+
         return ApiResponse::data(
-            (new UserResource($user))->toArray($request),
+            (new UserResource($user))->resolve($request),
         );
     }
 }

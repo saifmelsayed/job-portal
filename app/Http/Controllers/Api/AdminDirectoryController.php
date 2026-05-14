@@ -48,15 +48,6 @@ class AdminDirectoryController extends Controller
      */
     public function users(Request $request): JsonResponse
     {
-        $query = User::query()
-            ->with([
-                'skills',
-                'educations',
-                'experiences',
-                'certificates',
-            ])
-            ->orderByDesc('id');
-
         $role = $request->query('role');
         if ($role !== null && $role !== '') {
             $allowed = [
@@ -67,13 +58,36 @@ class AdminDirectoryController extends Controller
             if (! is_string($role) || ! in_array($role, $allowed, true)) {
                 return ApiResponse::message('Invalid role. Use job_seeker, company, or admin.', 422);
             }
+        }
+
+        $with = [
+            'jobSeekerProfile',
+            'companyProfile',
+            'admin',
+        ];
+
+        $loadSeekerNested = $role === null || $role === '' || $role === UserRole::JobSeeker->value;
+        if ($loadSeekerNested) {
+            $with = array_merge($with, [
+                'skills',
+                'educations',
+                'experiences',
+                'certificates',
+            ]);
+        }
+
+        $query = User::query()
+            ->with($with)
+            ->orderByDesc('id');
+
+        if ($role !== null && $role !== '') {
             $query->where('role', $role);
         }
 
         $paginator = $query->paginate($this->perPage($request));
 
         $items = collect($paginator->items())->map(function (User $user) use ($request) {
-            return (new UserResource($user))->toArray($request);
+            return (new UserResource($user))->resolve($request);
         })->values()->all();
 
         return ApiResponse::data($this->wrapPaginated($paginator, $items));
@@ -86,11 +100,12 @@ class AdminDirectoryController extends Controller
     {
         $paginator = User::query()
             ->where('role', UserRole::Company)
+            ->with('companyProfile')
             ->orderByDesc('id')
             ->paginate($this->perPage($request));
 
         $items = collect($paginator->items())->map(function (User $user) use ($request) {
-            return (new UserResource($user))->toArray($request);
+            return (new UserResource($user))->resolve($request);
         })->values()->all();
 
         return ApiResponse::data($this->wrapPaginated($paginator, $items));
@@ -102,7 +117,12 @@ class AdminDirectoryController extends Controller
     public function jobPostings(Request $request): JsonResponse
     {
         $paginator = JobPosting::query()
-            ->with(['user:id,company_name,email'])
+            ->with([
+                'user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'user.companyProfile',
+            ])
             ->withCount('applications')
             ->latest()
             ->paginate($this->perPage($request));
@@ -123,15 +143,17 @@ class AdminDirectoryController extends Controller
     public function applications(Request $request): JsonResponse
     {
         $paginator = JobApplication::query()
-            ->with([
-                'jobPosting.user:id,company_name',
-                'applicant:id,email,first_name,last_name,full_name',
-            ])
+            ->with(array_merge([
+                'jobPosting.user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'jobPosting.user.companyProfile',
+            ], JobApplication::applicantProfileWith()))
             ->latest()
             ->paginate($this->perPage($request));
 
         $items = collect($paginator->items())->map(function (JobApplication $application) use ($request) {
-            return (new JobApplicationResource($application))->toArray($request);
+            return (new JobApplicationResource($application))->resolve($request);
         })->values()->all();
 
         return ApiResponse::data($this->wrapPaginated($paginator, $items));
@@ -153,15 +175,17 @@ class AdminDirectoryController extends Controller
 
         $paginator = JobApplication::query()
             ->where('user_id', $job_seeker->id)
-            ->with([
-                'jobPosting.user:id,company_name',
-                'applicant:id,email,first_name,last_name,full_name',
-            ])
+            ->with(array_merge([
+                'jobPosting.user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'jobPosting.user.companyProfile',
+            ], JobApplication::applicantProfileWith()))
             ->latest()
             ->paginate($this->perPage($request));
 
         $items = collect($paginator->items())->map(function (JobApplication $application) use ($request) {
-            return (new JobApplicationResource($application))->toArray($request);
+            return (new JobApplicationResource($application))->resolve($request);
         })->values()->all();
 
         return ApiResponse::data(array_merge(
@@ -187,7 +211,12 @@ class AdminDirectoryController extends Controller
         }
 
         $paginator = $company->jobPostings()
-            ->with(['user:id,company_name,email'])
+            ->with([
+                'user' => static function ($q): void {
+                    $q->select('id', 'email', 'profile_photo_path');
+                },
+                'user.companyProfile',
+            ])
             ->withCount('applications')
             ->latest()
             ->paginate($this->perPage($request));

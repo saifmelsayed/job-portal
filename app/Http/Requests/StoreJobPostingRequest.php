@@ -13,6 +13,13 @@ class StoreJobPostingRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('approved_disability') || $this->input('approved_disability') === null) {
+            $this->merge(['approved_disability' => []]);
+        }
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
@@ -25,6 +32,8 @@ class StoreJobPostingRequest extends FormRequest
             'qualification' => ['required', 'string'],
             'location' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(JobWorkType::class)],
+            'approved_disability' => ['required', 'array', 'max:100'],
+            'approved_disability.*' => ['distinct', 'string', 'max:255'],
         ];
     }
 }

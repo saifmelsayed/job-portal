@@ -25,6 +25,8 @@ class UpdateJobPostingRequest extends FormRequest
             'qualification' => ['sometimes', 'string'],
             'location' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', Rule::enum(JobWorkType::class)],
+            'approved_disability' => ['sometimes', 'array', 'max:100'],
+            'approved_disability.*' => ['distinct', 'string', 'max:255'],
         ];
     }
 }

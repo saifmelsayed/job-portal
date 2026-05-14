@@ -23,12 +23,16 @@ class JobPostingResource extends JsonResource
     {
         $body = [
             'title' => $this->title,
-            'company_name' => $this->user?->company_name,
+            'company_name' => $this->user?->companyProfile?->company_name,
+            'company_profile_photo_url' => $this->user?->profilePhotoPublicUrl(),
+            'company_industry' => $this->user?->companyProfile?->industry,
+            'company_size' => $this->user?->companyProfile?->company_size,
             'description' => $this->description,
             'requirements' => $this->requirements,
             'qualification' => $this->qualification,
             'location' => $this->location,
             'type' => $this->type->value,
+            'approved_disability' => array_values($this->approved_disability ?? []),
             'created_at' => $this->formatDateTime($this->created_at),
             'updated_at' => $this->formatDateTime($this->updated_at),
         ];
@@ -56,6 +60,6 @@ class JobPostingResource extends JsonResource
         return $value
             ->copy()
             ->timezone((string) config('app.timezone', 'Africa/Cairo'))
-            ->format('M j, Y \a\t g:i A T');
+            ->format('M j, Y \a\t g:i A');
     }
 }

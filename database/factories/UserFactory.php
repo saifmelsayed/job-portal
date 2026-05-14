@@ -26,18 +26,48 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (User $user): void {
-            if (! $user->isJobSeeker()) {
+            if ($user->isAdmin()) {
+                if ($user->admin === null) {
+                    $user->admin()->create(['is_super_admin' => false]);
+                }
+
                 return;
             }
 
-            if ($user->skills()->exists()) {
+            if ($user->isJobSeeker()) {
+                if ($user->jobSeekerProfile === null) {
+                    $first = fake()->firstName();
+                    $last = fake()->lastName();
+                    $user->jobSeekerProfile()->create([
+                        'first_name' => $first,
+                        'last_name' => $last,
+                        'full_name' => $first.' '.$last,
+                        'cv_path' => null,
+                        'gender' => fake()->optional(0.7)->randomElement(['male', 'female', 'other']),
+                        'disability_type' => null,
+                    ]);
+                }
+
+                if ($user->skills()->exists()) {
+                    return;
+                }
+
+                foreach (['Laravel', 'PHP', 'MySQL'] as $index => $skill) {
+                    $user->skills()->create([
+                        'name' => $skill,
+                        'sort_order' => $index,
+                    ]);
+                }
+
                 return;
             }
 
-            foreach (['Laravel', 'PHP', 'MySQL'] as $index => $skill) {
-                $user->skills()->create([
-                    'name' => $skill,
-                    'sort_order' => $index,
+            if ($user->isCompany() && $user->companyProfile === null) {
+                $user->companyProfile()->create([
+                    'company_name' => fake()->company(),
+                    'industry' => 'Technology',
+                    'company_size' => '1-10',
+                    'disability_support_policy' => null,
                 ]);
             }
         });
@@ -45,22 +75,11 @@ class UserFactory extends Factory
 
     public function definition(): array
     {
-        $firstName = fake()->firstName();
-        $lastName = fake()->lastName();
-
         return [
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'full_name' => $firstName.' '.$lastName,
-            'cv_path' => null,
-            'company_name' => null,
-            'industry' => null,
-            'company_size' => null,
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->unique()->e164PhoneNumber(),
             'role' => UserRole::JobSeeker,
             'status' => 'active',
-            'gender' => fake()->optional(0.7)->randomElement(['male', 'female', 'other']),
             'city' => fake()->optional(0.8)->city(),
             'street' => fake()->optional(0.5)->streetAddress(),
             'profile_photo_path' => null,
@@ -82,33 +101,35 @@ class UserFactory extends Factory
 
     public function jobSeeker(): static
     {
-        return $this->state(function (array $attributes) {
-            $first = $attributes['first_name'] ?? fake()->firstName();
-            $last = $attributes['last_name'] ?? fake()->lastName();
-
-            return [
-                'role' => UserRole::JobSeeker,
-                'first_name' => $first,
-                'last_name' => $last,
-                'full_name' => $first.' '.$last,
-                'company_name' => null,
-                'industry' => null,
-                'company_size' => null,
-            ];
-        });
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::JobSeeker,
+        ]);
     }
 
     public function company(): static
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Company,
-            'first_name' => null,
-            'last_name' => null,
-            'full_name' => null,
-            'cv_path' => null,
-            'company_name' => fake()->company(),
-            'industry' => 'Technology',
-            'company_size' => '1-10',
         ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+        ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+        ])->afterCreating(function (User $user): void {
+            $user->admin?->update(['is_super_admin' => true]);
+        });
     }
 }
