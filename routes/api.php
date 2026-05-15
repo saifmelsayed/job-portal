@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminModerationController;
 use App\Http\Controllers\Api\AdminSubAdminController;
 use App\Http\Controllers\Api\AdminSubscriptionPlanController;
 use App\Http\Controllers\Api\AdminSubscriptionsController;
+use App\Http\Controllers\Api\AccountDeletionController;
 use App\Http\Controllers\Api\CompanyProfileController;
 use App\Http\Controllers\Api\CompanyJobPostingController;
 use App\Http\Controllers\Api\CompanyUserLookupController;
@@ -88,11 +89,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/company/profile', [CompanyProfileController::class, 'update']);
             Route::put('/company/profile', [CompanyProfileController::class, 'update']);
             Route::patch('/company/profile', [CompanyProfileController::class, 'update']);
+            Route::delete('/company/profile', [AccountDeletionController::class, 'destroy']);
         });
 
         Route::middleware('job_seeker')->group(function () {
             Route::post('/profile', [JobSeekerProfileController::class, 'update']);
             Route::patch('/profile', [JobSeekerProfileController::class, 'update']);
+            Route::delete('/profile', [AccountDeletionController::class, 'destroy']);
             Route::get('/applications', [JobSeekerJobApplicationController::class, 'index']);
             Route::post('/job-postings/{job_posting}/applications', [JobSeekerJobApplicationController::class, 'store']);
 

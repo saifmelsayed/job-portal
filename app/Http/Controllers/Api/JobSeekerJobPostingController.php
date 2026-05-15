@@ -90,6 +90,18 @@ class JobSeekerJobPostingController extends Controller
                 });
             });
         }
+
+        $category = isset($search['category']) ? trim((string) $search['category']) : '';
+        if ($category !== '') {
+            $like = '%'.addcslashes(mb_strtolower($category), '\\%_').'%';
+            $col = $query->qualifyColumn('category');
+            $query->whereRaw('LOWER(COALESCE('.$col.", '')) LIKE ?", [$like]);
+        }
+
+        $skill = isset($search['skill']) ? trim((string) $search['skill']) : '';
+        if ($skill !== '') {
+            self::applySkillFilter($query, $skill);
+        }
     }
 
     private static function applyGeneralKeywordSearch(Builder $query, string $keyword): void
@@ -108,6 +120,32 @@ class JobSeekerJobPostingController extends Controller
             $cast = $driver === 'sqlite' ? 'TEXT' : 'CHAR';
             $inner->orWhereRaw(
                 'LOWER(CAST(approved_disability AS '.$cast.')) LIKE ?',
+                [$like],
+            );
+
+            $inner->orWhereRaw(
+                'LOWER(COALESCE('.$inner->qualifyColumn('category').", '')) LIKE ?",
+                [$like],
+            );
+
+            $inner->orWhereRaw(
+                'LOWER(CAST('.$inner->qualifyColumn('skills').' AS '.$cast.')) LIKE ?',
+                [$like],
+            );
+        });
+    }
+
+    private static function applySkillFilter(Builder $query, string $needle): void
+    {
+        $like = '%'.addcslashes(mb_strtolower($needle), '\\%_').'%';
+
+        $query->where(function (Builder $inner) use ($needle, $like): void {
+            $inner->whereJsonContains('skills', $needle);
+
+            $driver = self::connectionDriver($inner);
+            $cast = $driver === 'sqlite' ? 'TEXT' : 'CHAR';
+            $inner->orWhereRaw(
+                'LOWER(CAST('.$inner->qualifyColumn('skills').' AS '.$cast.')) LIKE ?',
                 [$like],
             );
         });

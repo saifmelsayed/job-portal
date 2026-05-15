@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'location',
     'type',
     'approved_disability',
+    'category',
+    'skills',
 ])]
 class JobPosting extends Model
 {
@@ -29,6 +31,7 @@ class JobPosting extends Model
         return [
             'type' => JobWorkType::class,
             'approved_disability' => 'array',
+            'skills' => 'array',
         ];
     }
 

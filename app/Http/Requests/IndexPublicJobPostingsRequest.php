@@ -14,6 +14,8 @@ class IndexPublicJobPostingsRequest extends FormRequest
         'disability_type',
         'location',
         'company_industry',
+        'category',
+        'skill',
     ];
 
     public function authorize(): bool
@@ -127,7 +129,7 @@ class IndexPublicJobPostingsRequest extends FormRequest
             }
         }
 
-        foreach (['job_title', 'disability_type', 'location', 'company_industry'] as $sk) {
+        foreach (['job_title', 'disability_type', 'location', 'company_industry', 'category', 'skill'] as $sk) {
             if (isset($clean[$sk]) && is_string($clean[$sk])) {
                 $t = trim($clean[$sk]);
                 if ($t === '') {
@@ -194,6 +196,8 @@ class IndexPublicJobPostingsRequest extends FormRequest
             'search.disability_type' => ['sometimes', 'nullable', 'string', 'max:255'],
             'search.location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'search.company_industry' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'search.category' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'search.skill' => ['sometimes', 'nullable', 'string', 'max:100'],
         ];
     }
 }

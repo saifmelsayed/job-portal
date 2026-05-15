@@ -33,6 +33,8 @@ class JobPostingResource extends JsonResource
             'location' => $this->location,
             'type' => $this->type->value,
             'approved_disability' => array_values($this->approved_disability ?? []),
+            'category' => $this->category,
+            'skills' => array_values($this->skills ?? []),
             'created_at' => $this->formatDateTime($this->created_at),
             'updated_at' => $this->formatDateTime($this->updated_at),
         ];

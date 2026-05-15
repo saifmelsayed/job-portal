@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,7 +23,19 @@ class AdminAccountResource extends JsonResource
             'last_name' => $this->last_name,
             'status' => $this->status,
             'is_super_admin' => (bool) ($this->admin?->is_super_admin),
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at' => $this->formatDateTime($this->created_at),
         ];
+    }
+
+    private function formatDateTime(?CarbonInterface $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return $value
+            ->copy()
+            ->timezone((string) config('app.timezone', 'Africa/Cairo'))
+            ->format('M j, Y \a\t g:i A');
     }
 }

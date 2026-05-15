@@ -13,6 +13,23 @@ class UpdateJobPostingRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $category = $this->input('category');
+        if (is_string($category)) {
+            $this->merge(['category' => trim($category)]);
+        }
+
+        if (! $this->has('skills')) {
+            return;
+        }
+
+        $skills = $this->input('skills');
+        if (is_array($skills)) {
+            $this->merge(['skills' => StoreJobPostingRequest::normalizeSkillList($skills)]);
+        }
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
@@ -27,6 +44,9 @@ class UpdateJobPostingRequest extends FormRequest
             'type' => ['sometimes', Rule::enum(JobWorkType::class)],
             'approved_disability' => ['sometimes', 'array', 'max:100'],
             'approved_disability.*' => ['distinct', 'string', 'max:255'],
+            'category' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'skills' => ['sometimes', 'array', 'max:50'],
+            'skills.*' => ['string', 'max:100'],
         ];
     }
 }

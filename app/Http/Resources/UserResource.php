@@ -16,14 +16,6 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'first_name' => $this->when(
-                $this->role === UserRole::JobSeeker || $this->role === UserRole::Admin,
-                $this->resolveFirstName(),
-            ),
-            'last_name' => $this->when(
-                $this->role === UserRole::JobSeeker || $this->role === UserRole::Admin,
-                $this->resolveLastName(),
-            ),
             'email' => $this->email,
             'phone' => $this->phone,
             'role' => $this->role?->value ?? $this->role,
@@ -155,24 +147,6 @@ class UserResource extends JsonResource
                 $this->companyProfile?->instagram_url
             ),
         ];
-    }
-
-    private function resolveFirstName(): ?string
-    {
-        if ($this->role === UserRole::JobSeeker) {
-            return $this->jobSeekerProfile?->first_name;
-        }
-
-        return $this->first_name;
-    }
-
-    private function resolveLastName(): ?string
-    {
-        if ($this->role === UserRole::JobSeeker) {
-            return $this->jobSeekerProfile?->last_name;
-        }
-
-        return $this->last_name;
     }
 
     private function formatDateTime(?CarbonInterface $value): ?string

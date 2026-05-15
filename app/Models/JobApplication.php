@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
     'job_location',
     'job_type',
     'job_approved_disability',
+    'job_skills',
+    'job_category',
     'applicant_name',
     'applicant_email',
     'applicant_phone',
@@ -35,6 +37,7 @@ class JobApplication extends Model
         return [
             'status' => ApplicationStatus::class,
             'job_approved_disability' => 'array',
+            'job_skills' => 'array',
         ];
     }
 

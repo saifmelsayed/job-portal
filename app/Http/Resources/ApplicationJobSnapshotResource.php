@@ -30,6 +30,8 @@ class ApplicationJobSnapshotResource extends JsonResource
             'location' => $this->job_location,
             'type' => $this->job_type,
             'approved_disability' => array_values($this->job_approved_disability ?? []),
+            'category' => $this->job_category,
+            'skills' => array_values($this->job_skills ?? []),
         ];
     }
 

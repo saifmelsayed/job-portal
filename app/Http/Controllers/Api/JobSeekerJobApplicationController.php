@@ -120,6 +120,8 @@ class JobSeekerJobApplicationController extends Controller
                     'job_location' => $jobPosting->location,
                     'job_type' => $jobPosting->type->value,
                     'job_approved_disability' => array_values($jobPosting->approved_disability ?? []),
+                    'job_skills' => array_values($jobPosting->skills ?? []),
+                    'job_category' => $jobPosting->category,
                     'applicant_name' => $validated['name'],
                     'applicant_email' => $validated['email'],
                     'applicant_phone' => $validated['phone'],
