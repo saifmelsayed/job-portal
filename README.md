@@ -1,59 +1,166 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Job Portal API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel API for a job portal: companies publish jobs, job seekers browse and apply, administrators moderate accounts and listings. Authentication uses **Laravel Sanctum** personal access tokens (**Bearer**). Designed to pair with a separate SPA (for example Vite on port 5173).
 
-## About Laravel
+Built with [Laravel 13](https://laravel.com/docs).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Requirements
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **PHP** `^8.3`
+- **Composer**
+- **Node.js** and **npm** (Vite frontend toolchain)
+- **SQLite** (default in `.env.example`) or **MySQL** / **MariaDB**
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Quick start
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Install PHP dependencies
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Environment
 
-## Contributing
+**Windows**
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+copy .env.example .env
+```
 
-## Code of Conduct
+**macOS / Linux**
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cp .env.example .env
+```
 
-## Security Vulnerabilities
+Generate the application key:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan key:generate
+```
+
+### 3. Database
+
+**SQLite (default)**
+
+Create the database file if it does not exist:
+
+```bash
+touch database/database.sqlite
+```
+
+On Windows, create an empty file `database\database.sqlite`.
+
+Ensure `.env` contains:
+
+```env
+DB_CONNECTION=sqlite
+```
+
+**MySQL / MariaDB**
+
+Set `DB_CONNECTION=mysql` and configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in `.env`.
+
+Then run migrations:
+
+```bash
+php artisan migrate
+```
+
+### 4. Seed super admin (optional)
+
+Uses `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env` (see `.env.example`).
+
+```bash
+php artisan db:seed --class=AdminUserSeeder
+```
+
+### 5. Storage link
+
+Required for files on the `public` disk (for example profile photos):
+
+```bash
+php artisan storage:link
+```
+
+### 6. Frontend assets
+
+```bash
+npm install
+npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
+### 7. Run the API
+
+```bash
+php artisan serve
+```
+
+By default the app is at **http://localhost:8000**. Routes in `routes/api.php` are served under the **`/api`** prefix (for example `POST http://localhost:8000/api/login`).
+
+## One-command setup
+
+Install dependencies, create `.env` if missing, generate the key, migrate, install npm packages, and build assets:
+
+```bash
+composer run setup
+```
+
+Review `.env` afterward (database, mail, CORS, admin credentials).
+
+## Environment variables (cheat sheet)
+
+| Variable | Purpose |
+|----------|---------|
+| `APP_URL` | Base URL of this API |
+| `FRONTEND_URL` | SPA URL (used for links such as password reset) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API |
+| `CORS_SUPPORTS_CREDENTIALS` | Set `true` only if the SPA uses cookie-based Sanctum session auth |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Used when seeding the initial super admin |
+| `APP_TIMEZONE` | Application timezone (default in `.env.example`: `Africa/Cairo`) |
+| `MAIL_*` | Email delivery (`MAIL_MAILER=log` is typical for local dev) |
+
+See **[`.env.example`](.env.example)** for the full list and comments.
+
+## Authentication
+
+- **Job seeker / company:** `POST /api/register`, `POST /api/login` — responses include a **`token`** when login succeeds.
+- **Admin:** `POST /api/admin/login`.
+- On protected routes, send **`Authorization: Bearer <token>`**.
+
+## CORS and SPA
+
+Align origins with your frontend, for example:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CORS_SUPPORTS_CREDENTIALS=false
+```
+
+Use `CORS_SUPPORTS_CREDENTIALS=true` only when intentionally using cookies with Sanctum SPA authentication.
+
+## Development scripts
+
+```bash
+composer run dev    # server, queue, logs, and Vite (see composer.json)
+composer run test   # PHPUnit
+```
+
+## Production checklist
+
+- Set `APP_ENV=production`, `APP_DEBUG=false`, and a strong `APP_KEY`.
+- Configure production database and `MAIL_*`.
+- Run `php artisan migrate --force`.
+- Run `npm run build` when serving Vite-built assets from this application.
+- Run `php artisan storage:link` if you use the `public` disk for uploads.
+- Restrict `CORS_ALLOWED_ORIGINS` (avoid wildcards in production).
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# job-portal
+Open source under the [MIT License](https://opensource.org/licenses/MIT).
