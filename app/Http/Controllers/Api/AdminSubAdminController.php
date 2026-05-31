@@ -51,8 +51,7 @@ class AdminSubAdminController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => UserRole::Admin,
-            'first_name' => $validated['first_name'] ?? 'Staff',
-            'last_name' => $validated['last_name'] ?? 'Admin',
+            'full_name' => $validated['full_name'] ?? 'Staff Admin',
             'phone' => null,
             'email_verified_at' => now(),
             'status' => 'active',
@@ -103,8 +102,7 @@ class AdminSubAdminController extends Controller
         $user->fill(array_intersect_key($validated, array_flip([
             'email',
             'password',
-            'first_name',
-            'last_name',
+            'full_name',
             'status',
         ])));
 

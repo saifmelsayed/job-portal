@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'user_id',
-    'first_name',
-    'last_name',
     'full_name',
     'cv_path',
     'gender',

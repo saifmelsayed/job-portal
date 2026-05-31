@@ -37,10 +37,7 @@ class AuthService
             $user = $this->users->create($userData);
 
             if ($role === UserRole::JobSeeker) {
-                [$first, $last] = $this->splitFullName($data['full_name']);
                 $user->jobSeekerProfile()->create([
-                    'first_name' => $first,
-                    'last_name' => $last,
                     'full_name' => $data['full_name'],
                     'cv_path' => $data['cv_path'] ?? null,
                     'gender' => null,
@@ -81,23 +78,6 @@ class AuthService
                 'user' => $user,
             ];
         });
-    }
-
-    /**
-     * @return array{0: string, 1: string|null}
-     */
-    private function splitFullName(string $fullName): array
-    {
-        $fullName = trim($fullName);
-        $parts = preg_split('/\s+/', $fullName, 2);
-
-        $first = $parts[0] ?? '';
-        $last = isset($parts[1]) ? trim($parts[1]) : null;
-        if ($last === '') {
-            $last = null;
-        }
-
-        return [$first, $last];
     }
 
     /**

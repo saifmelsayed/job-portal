@@ -36,12 +36,8 @@ class UserFactory extends Factory
 
             if ($user->isJobSeeker()) {
                 if ($user->jobSeekerProfile === null) {
-                    $first = fake()->firstName();
-                    $last = fake()->lastName();
                     $user->jobSeekerProfile()->create([
-                        'first_name' => $first,
-                        'last_name' => $last,
-                        'full_name' => $first.' '.$last,
+                        'full_name' => fake()->name(),
                         'cv_path' => null,
                         'gender' => fake()->optional(0.7)->randomElement(['male', 'female', 'other']),
                         'disability_type' => null,
@@ -117,8 +113,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Admin,
-            'first_name' => fake()->firstName(),
-            'last_name' => fake()->lastName(),
+            'full_name' => fake()->name(),
         ]);
     }
 
@@ -126,8 +121,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Admin,
-            'first_name' => fake()->firstName(),
-            'last_name' => fake()->lastName(),
+            'full_name' => fake()->name(),
         ])->afterCreating(function (User $user): void {
             $user->admin?->update(['is_super_admin' => true]);
         });

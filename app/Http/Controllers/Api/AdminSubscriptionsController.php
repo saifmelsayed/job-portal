@@ -20,7 +20,7 @@ class AdminSubscriptionsController extends Controller
     public function index(Request $request): JsonResponse
     {
         $paginator = Subscription::query()
-            ->with(['user', 'plan', 'payment'])
+            ->with(['user.jobSeekerProfile', 'plan', 'payment'])
             ->latest('id')
             ->paginate($this->perPage($request));
 
@@ -52,7 +52,7 @@ class AdminSubscriptionsController extends Controller
 
         $subscription->update(['status' => SubscriptionStatus::Suspended]);
         $subscription->refresh();
-        $subscription->load(['user', 'plan', 'payment']);
+        $subscription->load(['user.jobSeekerProfile', 'plan', 'payment']);
 
         return ApiResponse::data(
             (new SubscriptionResource($subscription, includeUser: true))->resolve($request),

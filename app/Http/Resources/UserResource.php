@@ -36,8 +36,10 @@ class UserResource extends JsonResource
             'created_at' => $this->formatDateTime($this->created_at),
             'updated_at' => $this->formatDateTime($this->updated_at),
             'full_name' => $this->when(
-                $this->role === UserRole::JobSeeker,
-                $this->jobSeekerProfile?->full_name
+                $this->role === UserRole::JobSeeker || $this->role === UserRole::Admin,
+                fn (): ?string => $this->role === UserRole::Admin
+                    ? $this->full_name
+                    : $this->jobSeekerProfile?->full_name,
             ),
             'skills' => $this->when(
                 $this->role === UserRole::JobSeeker,

@@ -48,8 +48,7 @@ class SubscriptionResource extends JsonResource
             $body['user'] = [
                 'id' => $this->user->id,
                 'email' => $this->user->email,
-                'first_name' => $this->user->first_name,
-                'last_name' => $this->user->last_name,
+                'full_name' => $this->user->jobSeekerProfile?->full_name,
             ];
         }
 

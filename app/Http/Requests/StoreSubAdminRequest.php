@@ -20,8 +20,9 @@ class StoreSubAdminRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['prohibited'],
+            'last_name' => ['prohibited'],
+            'full_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 

@@ -23,7 +23,7 @@ class JobSeekerProfileController extends Controller
     private const SCALAR_USER_KEYS = ['phone', 'city', 'street'];
 
     /** @var list<string> */
-    private const SCALAR_PROFILE_KEYS = ['gender', 'disability_type'];
+    private const SCALAR_PROFILE_KEYS = ['full_name', 'gender', 'disability_type'];
 
     public function update(UpdateProfileRequest $request): JsonResponse
     {
@@ -46,8 +46,6 @@ class JobSeekerProfileController extends Controller
                 $profile = $user->jobSeekerProfile()->firstOrCreate(
                     ['user_id' => $user->id],
                     [
-                        'first_name' => null,
-                        'last_name' => null,
                         'full_name' => null,
                         'cv_path' => null,
                         'gender' => null,
@@ -65,26 +63,6 @@ class JobSeekerProfileController extends Controller
                     if (Arr::exists($validated, $field)) {
                         $profile->{$field} = $validated[$field];
                     }
-                }
-
-                if (\array_key_exists('full_name', $validated)) {
-                    [$first, $last] = $this->splitFullName((string) $validated['full_name']);
-                    $profile->first_name = $first !== '' ? $first : null;
-                    $profile->last_name = $last;
-                    $profile->full_name = $validated['full_name'];
-                } elseif (
-                    \array_key_exists('first_name', $validated)
-                    || \array_key_exists('last_name', $validated)
-                ) {
-                    $first = \array_key_exists('first_name', $validated)
-                        ? $validated['first_name']
-                        : $profile->first_name;
-                    $last = \array_key_exists('last_name', $validated)
-                        ? $validated['last_name']
-                        : $profile->last_name;
-                    $profile->first_name = is_string($first) && $first !== '' ? $first : null;
-                    $profile->last_name = is_string($last) && $last !== '' ? $last : null;
-                    $profile->full_name = $this->composeFullName($profile->first_name, $profile->last_name);
                 }
 
                 if (\array_key_exists('skills', $validated)) {
@@ -215,37 +193,6 @@ class JobSeekerProfileController extends Controller
         return ApiResponse::data(
             (new UserResource($user))->resolve($request),
         );
-    }
-
-    /**
-     * @return array{0: string, 1: string|null}
-     */
-    private function splitFullName(string $fullName): array
-    {
-        $fullName = trim($fullName);
-        $parts = preg_split('/\s+/', $fullName, 2);
-
-        $first = $parts[0] ?? '';
-        $last = isset($parts[1]) ? trim($parts[1]) : null;
-        if ($last === '') {
-            $last = null;
-        }
-
-        return [$first, $last];
-    }
-
-    private function composeFullName(?string $first, ?string $last): ?string
-    {
-        $parts = array_values(array_filter(
-            [$first, $last],
-            fn (?string $p): bool => $p !== null && $p !== '',
-        ));
-
-        if ($parts === []) {
-            return null;
-        }
-
-        return implode(' ', $parts);
     }
 
     /**

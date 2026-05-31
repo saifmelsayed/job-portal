@@ -30,8 +30,9 @@ class UpdateSubAdminRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($userId),
             ],
             'password' => ['sometimes', 'confirmed', Password::min(8)],
-            'first_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'first_name' => ['prohibited'],
+            'last_name' => ['prohibited'],
+            'full_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'string', Rule::in(['active', 'inactive'])],
         ];
     }

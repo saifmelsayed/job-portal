@@ -42,7 +42,7 @@ class UpdateProfileRequest extends FormRequest
             'phone' => ($phone === '' || $phone === null) ? null : $phone,
         ]);
 
-        foreach (['first_name', 'last_name', 'full_name'] as $field) {
+        foreach (['full_name'] as $field) {
             $value = $this->input($field);
             if (! is_string($value)) {
                 continue;
@@ -60,8 +60,8 @@ class UpdateProfileRequest extends FormRequest
         $userId = $this->user()->id;
 
         return [
-            'first_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'first_name' => ['prohibited'],
+            'last_name' => ['prohibited'],
             'full_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => [
                 'sometimes',

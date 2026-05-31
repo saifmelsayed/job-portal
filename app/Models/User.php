@@ -16,8 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'first_name',
-    'last_name',
+    'full_name',
     'email',
     'phone',
     'password',

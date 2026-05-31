@@ -19,8 +19,7 @@ class AdminAccountResource extends JsonResource
         return [
             'id' => $this->id,
             'email' => $this->email,
-            'first_name' => $this->first_name,
-            'last_name' => $this->last_name,
+            'full_name' => $this->full_name,
             'status' => $this->status,
             'is_super_admin' => (bool) ($this->admin?->is_super_admin),
             'created_at' => $this->formatDateTime($this->created_at),

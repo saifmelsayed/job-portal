@@ -149,22 +149,13 @@ class StoreJobApplicationRequest extends FormRequest
         });
     }
 
-    /** Display name resolved from profile and user fields (same rules as backend apply-from-profile behavior). */
+    /** Display name from the seeker profile's full_name. */
     public static function applicantDisplayNameFromUser(User $user, ?JobSeekerProfile $profile): string
     {
         if ($profile !== null && is_string($profile->full_name) && trim($profile->full_name) !== '') {
             return trim($profile->full_name);
         }
 
-        $fromParts = trim(implode(' ', array_filter([
-            $profile !== null ? (string) $profile->first_name : '',
-            $profile !== null ? (string) $profile->last_name : '',
-        ], static fn (string $p): bool => trim($p) !== '')));
-
-        if ($fromParts !== '') {
-            return $fromParts;
-        }
-
-        return trim(implode(' ', array_filter([(string) $user->first_name, (string) $user->last_name], static fn (string $p): bool => trim($p) !== '')));
+        return '';
     }
 }
