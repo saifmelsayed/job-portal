@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Applicant data as submitted on a job application.
+ * Applicant data resolved from the applicant user and profile.
  *
  * @mixin \App\Models\JobApplication
  */
@@ -17,13 +17,15 @@ class ApplicantSubmissionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $applicant = $this->relationLoaded('applicant') ? $this->applicant : $this->applicant()->first();
+        $profile = $applicant?->jobSeekerProfile;
+
         return [
-            'name' => $this->applicant_name,
-            'email' => $this->applicant_email,
-            'phone' => $this->applicant_phone,
-            'linkedin' => $this->applicant_linkedin,
-            //'cv_filename' => basename($this->cv_path),
-            'cv_url' => $this->resource->cvPublicUrl(),
+            'name' => is_string($applicant?->full_name) ? trim($applicant->full_name) : null,
+            'email' => $applicant?->email,
+            'phone' => $applicant?->phone,
+            'linkedin' => $profile?->linkedin_url,
+            'cv_url' => $profile?->cvPublicUrl(),
         ];
     }
 }

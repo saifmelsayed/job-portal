@@ -33,35 +33,21 @@ class AuthService
             'email_verified_at' => now(),
         ];
 
+        if ($role === UserRole::JobSeeker) {
+            $userData['full_name'] = $data['full_name'];
+        }
+
         return DB::transaction(function () use ($role, $data, $userData): array {
             $user = $this->users->create($userData);
 
             if ($role === UserRole::JobSeeker) {
                 $user->jobSeekerProfile()->create([
-                    'full_name' => $data['full_name'],
                     'cv_path' => $data['cv_path'] ?? null,
                     'gender' => null,
                     'disability_type' => null,
                 ]);
 
-                $seen = [];
-                $order = 0;
-                foreach ($this->normalizeSkills($data['skills']) as $name) {
-                    $trimmed = mb_substr(trim($name), 0, 100);
-                    if ($trimmed === '') {
-                        continue;
-                    }
-                    $key = mb_strtolower($trimmed);
-                    if (isset($seen[$key])) {
-                        continue;
-                    }
-                    $seen[$key] = true;
-                    $user->skills()->create([
-                        'name' => $trimmed,
-                        'sort_order' => $order,
-                    ]);
-                    $order++;
-                }
+                $user->syncSkillsFromNames($this->normalizeSkills($data['skills']));
                 $user->unsetRelation('skills');
             }
 

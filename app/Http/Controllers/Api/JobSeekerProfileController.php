@@ -20,10 +20,10 @@ class JobSeekerProfileController extends Controller
     private const string CV_DISK = 'public';
 
     /** @var list<string> */
-    private const SCALAR_USER_KEYS = ['phone', 'city', 'street'];
+    private const SCALAR_USER_KEYS = ['full_name', 'phone', 'city', 'street'];
 
     /** @var list<string> */
-    private const SCALAR_PROFILE_KEYS = ['full_name', 'gender', 'disability_type'];
+    private const SCALAR_PROFILE_KEYS = ['gender', 'disability_type', 'linkedin_url'];
 
     public function update(UpdateProfileRequest $request): JsonResponse
     {
@@ -46,7 +46,6 @@ class JobSeekerProfileController extends Controller
                 $profile = $user->jobSeekerProfile()->firstOrCreate(
                     ['user_id' => $user->id],
                     [
-                        'full_name' => null,
                         'cv_path' => null,
                         'gender' => null,
                         'disability_type' => null,
@@ -66,21 +65,9 @@ class JobSeekerProfileController extends Controller
                 }
 
                 if (\array_key_exists('skills', $validated)) {
-                    $user->skills()->delete();
-                    $seen = [];
-                    $order = 0;
-                    foreach ($this->normalizeSkillNames(is_array($validated['skills']) ? $validated['skills'] : []) as $trimmed) {
-                        $key = mb_strtolower($trimmed);
-                        if (isset($seen[$key])) {
-                            continue;
-                        }
-                        $seen[$key] = true;
-                        $user->skills()->create([
-                            'name' => $trimmed,
-                            'sort_order' => $order,
-                        ]);
-                        $order++;
-                    }
+                    $user->syncSkillsFromNames(
+                        is_array($validated['skills']) ? $validated['skills'] : [],
+                    );
                 }
 
                 if (\array_key_exists('educations', $validated)) {
@@ -193,26 +180,5 @@ class JobSeekerProfileController extends Controller
         return ApiResponse::data(
             (new UserResource($user))->resolve($request),
         );
-    }
-
-    /**
-     * @param  array<int, mixed>  $skills
-     * @return list<string>
-     */
-    private function normalizeSkillNames(array $skills): array
-    {
-        $out = [];
-        foreach ($skills as $s) {
-            if (! is_string($s)) {
-                continue;
-            }
-            $t = mb_substr(trim($s), 0, 100);
-            if ($t === '') {
-                continue;
-            }
-            $out[] = $t;
-        }
-
-        return $out;
     }
 }

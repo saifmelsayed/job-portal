@@ -143,12 +143,7 @@ class AdminDirectoryController extends Controller
     public function applications(Request $request): JsonResponse
     {
         $paginator = JobApplication::query()
-            ->with(array_merge([
-                'jobPosting.user' => static function ($q): void {
-                    $q->select('id', 'email', 'profile_photo_path');
-                },
-                'jobPosting.user.companyProfile',
-            ], JobApplication::applicantProfileWith()))
+            ->with(JobApplication::applicantProfileWith())
             ->latest()
             ->paginate($this->perPage($request));
 
@@ -175,12 +170,7 @@ class AdminDirectoryController extends Controller
 
         $paginator = JobApplication::query()
             ->where('user_id', $job_seeker->id)
-            ->with(array_merge([
-                'jobPosting.user' => static function ($q): void {
-                    $q->select('id', 'email', 'profile_photo_path');
-                },
-                'jobPosting.user.companyProfile',
-            ], JobApplication::applicantProfileWith()))
+            ->with(JobApplication::applicantProfileWith())
             ->latest()
             ->paginate($this->perPage($request));
 

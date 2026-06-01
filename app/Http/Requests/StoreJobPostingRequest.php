@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\JobPostingStatus;
 use App\Enums\JobWorkType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -80,6 +81,7 @@ class StoreJobPostingRequest extends FormRequest
             'category' => ['required', 'string', 'max:255'],
             'skills' => ['required', 'array', 'max:50'],
             'skills.*' => ['string', 'max:100'],
+            'status' => ['sometimes', Rule::enum(JobPostingStatus::class)],
         ];
     }
 }

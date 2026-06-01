@@ -14,19 +14,10 @@ class UserAccountDeletionService
 
     public function delete(User $user): void
     {
-        $user->loadMissing(['jobSeekerProfile', 'jobApplications']);
+        $user->loadMissing(['jobSeekerProfile']);
 
         $photoPath = $user->profile_photo_path;
         $profileCvPath = $user->jobSeekerProfile?->cv_path;
-
-        $applicationCvPaths = [];
-        foreach ($user->jobApplications as $application) {
-            $path = $application->cv_path;
-            if (is_string($path) && $path !== '') {
-                $applicationCvPaths[$path] = true;
-            }
-        }
-        $applicationCvPaths = array_keys($applicationCvPaths);
 
         DB::transaction(function () use ($user): void {
             $user->tokens()->delete();
@@ -42,10 +33,6 @@ class UserAccountDeletionService
         if (is_string($profileCvPath) && $profileCvPath !== '') {
             $public->delete($profileCvPath);
             Storage::disk(self::LOCAL_DISK)->delete($profileCvPath);
-        }
-
-        foreach ($applicationCvPaths as $path) {
-            $public->delete($path);
         }
     }
 }

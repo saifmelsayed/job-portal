@@ -22,6 +22,7 @@ class JobPostingResource extends JsonResource
     public function toArray(Request $request): array
     {
         $body = [
+            'status' => $this->status->value,
             'title' => $this->title,
             'company_name' => $this->user?->companyProfile?->company_name,
             'company_profile_photo_url' => $this->user?->profilePhotoPublicUrl(),

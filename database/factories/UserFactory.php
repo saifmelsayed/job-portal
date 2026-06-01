@@ -37,23 +37,21 @@ class UserFactory extends Factory
             if ($user->isJobSeeker()) {
                 if ($user->jobSeekerProfile === null) {
                     $user->jobSeekerProfile()->create([
-                        'full_name' => fake()->name(),
                         'cv_path' => null,
                         'gender' => fake()->optional(0.7)->randomElement(['male', 'female', 'other']),
                         'disability_type' => null,
                     ]);
                 }
 
+                if ($user->full_name === null || $user->full_name === '') {
+                    $user->update(['full_name' => fake()->name()]);
+                }
+
                 if ($user->skills()->exists()) {
                     return;
                 }
 
-                foreach (['Laravel', 'PHP', 'MySQL'] as $index => $skill) {
-                    $user->skills()->create([
-                        'name' => $skill,
-                        'sort_order' => $index,
-                    ]);
-                }
+                $user->syncSkillsFromNames(['Laravel', 'PHP', 'MySQL']);
 
                 return;
             }
@@ -76,6 +74,7 @@ class UserFactory extends Factory
             'phone' => fake()->unique()->e164PhoneNumber(),
             'role' => UserRole::JobSeeker,
             'status' => 'active',
+            'full_name' => fake()->name(),
             'city' => fake()->optional(0.8)->city(),
             'street' => fake()->optional(0.5)->streetAddress(),
             'profile_photo_path' => null,
@@ -106,6 +105,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Company,
+            'full_name' => null,
         ]);
     }
 

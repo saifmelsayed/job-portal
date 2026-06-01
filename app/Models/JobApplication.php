@@ -6,26 +6,11 @@ use App\Enums\ApplicationStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'job_posting_id',
     'user_id',
     'status',
-    'job_title',
-    'job_description',
-    'job_requirements',
-    'job_qualification',
-    'job_location',
-    'job_type',
-    'job_approved_disability',
-    'job_skills',
-    'job_category',
-    'applicant_name',
-    'applicant_email',
-    'applicant_phone',
-    'applicant_linkedin',
-    'cv_path',
 ])]
 class JobApplication extends Model
 {
@@ -36,8 +21,6 @@ class JobApplication extends Model
     {
         return [
             'status' => ApplicationStatus::class,
-            'job_approved_disability' => 'array',
-            'job_skills' => 'array',
         ];
     }
 
@@ -58,35 +41,21 @@ class JobApplication extends Model
     }
 
     /**
-     * Eager-load keys for the job seeker’s profile on {@see applicant()}.
+     * Eager-load keys for listing application details.
      *
      * @return list<string>
      */
     public static function applicantProfileWith(): array
     {
         return [
+            'jobPosting',
+            'jobPosting.user.companyProfile',
+            'applicant',
             'applicant.jobSeekerProfile',
             'applicant.skills',
             'applicant.educations',
             'applicant.experiences',
             'applicant.certificates',
         ];
-    }
-
-    /**
-     * Public URL when the CV is stored on the public disk (under /storage/...).
-     */
-    public function cvPublicUrl(): ?string
-    {
-        $path = $this->cv_path;
-        if ($path === null || $path === '' || str_contains($path, '..')) {
-            return null;
-        }
-
-        if (! Storage::disk('public')->exists($path)) {
-            return null;
-        }
-
-        return Storage::disk('public')->url($path);
     }
 }

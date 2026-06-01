@@ -42,7 +42,7 @@ class UpdateProfileRequest extends FormRequest
             'phone' => ($phone === '' || $phone === null) ? null : $phone,
         ]);
 
-        foreach (['full_name'] as $field) {
+        foreach (['full_name', 'linkedin_url'] as $field) {
             $value = $this->input($field);
             if (! is_string($value)) {
                 continue;
@@ -63,6 +63,7 @@ class UpdateProfileRequest extends FormRequest
             'first_name' => ['prohibited'],
             'last_name' => ['prohibited'],
             'full_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'linkedin_url' => ['sometimes', 'nullable', 'string', 'url', 'max:2048'],
             'phone' => [
                 'sometimes',
                 'nullable',

@@ -29,11 +29,7 @@ class CompanyJobPostingController extends Controller
             ->whereHas('jobPosting', static function ($query) use ($companyOwnerId): void {
                 $query->where('user_id', $companyOwnerId);
             })
-            ->with(array_merge([
-                'jobPosting' => static function ($q): void {
-                    $q->select('id', 'user_id', 'title');
-                },
-            ], JobApplication::applicantProfileWith()))
+            ->with(JobApplication::applicantProfileWith())
             ->latest()
             ->paginate($perPage);
 

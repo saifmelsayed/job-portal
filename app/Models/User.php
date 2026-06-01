@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -118,11 +119,46 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<UserSkill, $this>
+     * @return BelongsToMany<Skill, $this>
      */
-    public function skills(): HasMany
+    public function skills(): BelongsToMany
     {
-        return $this->hasMany(UserSkill::class)->orderBy('sort_order')->orderBy('id');
+        return $this->belongsToMany(Skill::class, 'user_skills')
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderBy('skills.id');
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    public function syncSkillsFromNames(array $names): void
+    {
+        $sync = [];
+        $seen = [];
+        $order = 0;
+
+        foreach ($names as $rawName) {
+            if (! is_string($rawName)) {
+                continue;
+            }
+            $trimmed = mb_substr(trim($rawName), 0, 100);
+            if ($trimmed === '') {
+                continue;
+            }
+            $key = mb_strtolower($trimmed);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $skill = Skill::query()->firstOrCreate(['name' => $trimmed]);
+            $sync[$skill->id] = ['sort_order' => $order];
+            $order++;
+        }
+
+        $this->skills()->sync($sync);
     }
 
     /**

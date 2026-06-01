@@ -2,12 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\JobPosting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Job fields stored on the application at submit time.
+ * Job fields resolved from the related posting.
  *
  * @mixin \App\Models\JobApplication
  */
@@ -18,50 +19,56 @@ class ApplicationJobSnapshotResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $posting = $this->resolveJobPosting();
+
         return [
-            'title' => $this->job_title,
-            'company_name' => $this->resolveCompanyName(),
-            'company_profile_photo_url' => $this->resolveCompanyProfilePhotoUrl(),
-            'company_industry' => $this->resolveCompanyIndustry(),
-            'company_size' => $this->resolveCompanySize(),
-            'description' => $this->job_description,
-            'requirements' => $this->job_requirements,
-            'qualification' => $this->job_qualification,
-            'location' => $this->job_location,
-            'type' => $this->job_type,
-            'approved_disability' => array_values($this->job_approved_disability ?? []),
-            'category' => $this->job_category,
-            'skills' => array_values($this->job_skills ?? []),
+            'title' => $posting?->title,
+            'company_name' => $this->resolveCompanyName($posting),
+            'company_profile_photo_url' => $this->resolveCompanyProfilePhotoUrl($posting),
+            'company_industry' => $this->resolveCompanyIndustry($posting),
+            'company_size' => $this->resolveCompanySize($posting),
+            'description' => $posting?->description,
+            'requirements' => $posting?->requirements,
+            'qualification' => $posting?->qualification,
+            'location' => $posting?->location,
+            'type' => $posting?->type?->value ?? $posting?->type,
+            'approved_disability' => array_values($posting?->approved_disability ?? []),
+            'category' => $posting?->category,
+            'skills' => array_values($posting?->skills ?? []),
         ];
     }
 
-    private function resolveCompanyName(): ?string
+    private function resolveJobPosting(): ?JobPosting
     {
-        return $this->resolveCompanyOwner()?->companyProfile?->company_name;
-    }
-
-    private function resolveCompanyProfilePhotoUrl(): ?string
-    {
-        return $this->resolveCompanyOwner()?->profilePhotoPublicUrl();
-    }
-
-    private function resolveCompanyIndustry(): ?string
-    {
-        return $this->resolveCompanyOwner()?->companyProfile?->industry;
-    }
-
-    private function resolveCompanySize(): ?string
-    {
-        return $this->resolveCompanyOwner()?->companyProfile?->company_size;
-    }
-
-    private function resolveCompanyOwner(): ?User
-    {
-        if (! $this->relationLoaded('jobPosting')) {
-            return null;
+        if ($this->relationLoaded('jobPosting')) {
+            return $this->jobPosting;
         }
 
-        $posting = $this->jobPosting;
+        return $this->jobPosting()->first();
+    }
+
+    private function resolveCompanyName(?JobPosting $posting): ?string
+    {
+        return $this->resolveCompanyOwner($posting)?->companyProfile?->company_name;
+    }
+
+    private function resolveCompanyProfilePhotoUrl(?JobPosting $posting): ?string
+    {
+        return $this->resolveCompanyOwner($posting)?->profilePhotoPublicUrl();
+    }
+
+    private function resolveCompanyIndustry(?JobPosting $posting): ?string
+    {
+        return $this->resolveCompanyOwner($posting)?->companyProfile?->industry;
+    }
+
+    private function resolveCompanySize(?JobPosting $posting): ?string
+    {
+        return $this->resolveCompanyOwner($posting)?->companyProfile?->company_size;
+    }
+
+    private function resolveCompanyOwner(?JobPosting $posting): ?User
+    {
         if ($posting === null) {
             return null;
         }
